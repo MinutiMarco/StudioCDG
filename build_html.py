@@ -139,8 +139,15 @@ def h_tradeoff(s):
     p.append("</div>")
     return "".join(p)
 
+def _rows(s):
+    """Normalizza le righe di un confronto: liste oppure {label, cells}."""
+    out = []
+    for r in s["rows"]:
+        out.append(r if isinstance(r, list) else [r["label"]] + list(r["cells"]))
+    return out
+
 def h_compare(s):
-    cols, rows = s["columns"], s["rows"]
+    cols, rows = s["columns"], _rows(s)
     ncol = len(rows[0])
     head = cols if len(cols) == ncol else [""] + cols
     p = ['<div class="dg-scroll"><table class="dg-tab"><thead><tr>']

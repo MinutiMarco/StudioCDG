@@ -75,8 +75,15 @@ def _styles(doc):
         st.paragraph_format.keep_with_next = True
 
 # ---------------------------------------------------------------- tabelle
+def _rows(s):
+    """Normalizza le righe di un confronto: liste oppure {label, cells}."""
+    out = []
+    for r in s["rows"]:
+        out.append(r if isinstance(r, list) else [r["label"]] + list(r["cells"]))
+    return out
+
 def tabella_compare(doc, s):
-    cols, rows = s["columns"], s["rows"]
+    cols, rows = s["columns"], _rows(s)
     ncol = len(rows[0])
     head = cols if len(cols) == ncol else [""] + cols
     t = doc.add_table(rows=1, cols=ncol); t.style = "Table Grid"
