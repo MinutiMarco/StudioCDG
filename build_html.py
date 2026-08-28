@@ -534,8 +534,18 @@ def pagina(caps, out="mappa.html"):
 d'insieme sono capitoli non ancora elaborati.</footer>
 <script>{JS}</script>
 """
-    open(out, "w").write(doc)
+    open(out, "w", encoding="utf-8").write(doc)
+    salva_standalone(doc, "mappa-standalone.html")
     return out, len(caps), sum(len(c["schemi"]) for c in caps)
+
+def salva_standalone(doc, out):
+    """Versione apribile da disco: l'artifact aggiunge da sé doctype, head e reset."""
+    pagina = ('<!doctype html>\n<html lang="it">\n<head>\n'
+              '<meta charset="utf-8">\n' + doc.split("\n<style>", 1)[0] +
+              '\n<style>*,*::before,*::after{box-sizing:border-box}'
+              'body{margin:0}img{max-width:100%}</style>\n</head>\n<body>\n<style>' +
+              doc.split("\n<style>", 1)[1] + "\n</body>\n</html>\n")
+    open(out, "w", encoding="utf-8").write(pagina)
 
 if __name__ == "__main__":
     print(pagina(raccogli()))
