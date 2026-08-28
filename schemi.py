@@ -88,8 +88,15 @@ def draw_flow(s, path):
     _note(ax, s.get("note"))
     fig.savefig(path, dpi=200, bbox_inches="tight", facecolor=BG); plt.close(fig)
 
+def _nodes(s):
+    """Normalizza i nodi di un ciclo: accetta `nodes` (stringhe) o `steps` (dizionari)."""
+    if "nodes" in s:
+        return list(s["nodes"])
+    return [st["label"] + ("\n" + st["detail"] if st.get("detail") else "")
+            for st in s["steps"]]
+
 def draw_cycle(s, path):
-    nodes = s["nodes"]; n = len(nodes)
+    nodes = _nodes(s); n = len(nodes)
     import math
     fig, ax = _fig(8, 6.4)
     _title(ax, s["title"])
@@ -138,7 +145,48 @@ def draw_hierarchy(s, path):
     _note(ax, s.get("note"), max(1, min(lows) - 6))
     fig.savefig(path, dpi=200, bbox_inches="tight", facecolor=BG); plt.close(fig)
 
+def draw_grid(s, path):
+    """Matrice a griglia: righe etichettate x colonne, con celle testuali."""
+    rows, cols, cells = s["rows"], s["cols"], s["cells"]
+    nr, nc = len(rows), len(cols)
+    txt = [[_wrap(str(c), max(int(78 / (nc + 1)), 16)) for c in r] for r in cells]
+    hs = [max(3.0, 2.4 + 2.3 * max(t.count("\n") + 1 for t in r)) for r in txt]
+    tot = sum(hs)
+    fig, ax = _fig(10.5, max(2.8, 0.11 * tot + 1.6))
+    _title(ax, s["title"])
+    top, bot = 88, (13 if s.get("note") else 6)
+    scale = (top - bot - 7) / tot
+    lw = 26.0
+    cw = (98 - lw) / nc
+    ax.add_patch(FancyBboxPatch((1, top - 6.4), 98, 6.0,
+                                boxstyle="round,pad=0,rounding_size=1",
+                                linewidth=0, facecolor="#eef2f7"))
+    for j, c in enumerate(cols):
+        ax.text(1 + lw + (j + 0.5) * cw, top - 3.4, _wrap(c, max(int(cw / 1.1), 14)),
+                ha="center", va="center", fontsize=8.4, weight="bold", color=ACCENT)
+    y = top - 7
+    for i, r in enumerate(rows):
+        h = hs[i] * scale
+        y -= h
+        ax.add_patch(FancyBboxPatch((1, y + 0.5), lw - 1, h - 1,
+                                    boxstyle="round,pad=0,rounding_size=1",
+                                    linewidth=1.0, edgecolor=EDGE[i % len(EDGE)],
+                                    facecolor=FILL[i % len(FILL)]))
+        ax.text(1 + (lw - 1) / 2, y + h / 2, _wrap(r, 22), ha="center", va="center",
+                fontsize=8.2, weight="bold", color=INK)
+        for j in range(nc):
+            x = 1 + lw + j * cw
+            ax.add_patch(FancyBboxPatch((x + 0.5, y + 0.5), cw - 1, h - 1,
+                                        boxstyle="round,pad=0,rounding_size=1",
+                                        linewidth=0.8, edgecolor=LINE, facecolor="#fbfcfd"))
+            ax.text(x + cw / 2, y + h / 2, txt[i][j] if j < len(txt[i]) else "",
+                    ha="center", va="center", fontsize=7.3, color=INK)
+    _note(ax, s.get("note"), max(1, y - 5))
+    fig.savefig(path, dpi=200, bbox_inches="tight", facecolor=BG); plt.close(fig)
+
 def draw_matrix(s, path):
+    if "quadrants" not in s:
+        return draw_grid(s, path)
     q = {d["pos"]: d for d in s["quadrants"]}
     fig, ax = _fig(8.6, 6.6)
     _title(ax, s["title"])
@@ -161,21 +209,56 @@ def draw_matrix(s, path):
     _note(ax, s.get("note"))
     fig.savefig(path, dpi=200, bbox_inches="tight", facecolor=BG); plt.close(fig)
 
+def _levels(s):
+    """Normalizza i livelli di una piramide: stringhe oppure {label, detail}."""
+    out = []
+    for t in s["levels"]:
+        out.append((t, None) if isinstance(t, str) else (t["label"], t.get("detail")))
+    return out
+
 def draw_pyramid(s, path):
-    lv = s["levels"]; n = len(lv)
-    fig, ax = _fig(8.6, max(2.6, 0.95 * n + 1.4))
+    lv = _levels(s); n = len(lv)
+    tall = any(d for _, d in lv)
+    fig, ax = _fig(8.6, max(2.6, (1.55 if tall else 0.95) * n + 1.4))
     _title(ax, s["title"])
     top, bot = 87, (16 if s.get("note") else 10)
     hgt = (top - bot) / n
-    for k, t in enumerate(lv):
+    for k, (lab, det) in enumerate(lv):
         frac = 0.42 + 0.58 * (k + 1) / n
         w = 86 * frac
         y = top - (k + 1) * hgt
-        _box(ax, 50 - w/2, y + 1.2, w, hgt - 2.4, t, None, k, fs=8.8)
+        _box(ax, 50 - w/2, y + 1.2, w, hgt - 2.4, lab, det, k, fs=8.8)
     _note(ax, s.get("note"))
     fig.savefig(path, dpi=200, bbox_inches="tight", facecolor=BG); plt.close(fig)
 
+def draw_poles(s, path):
+    """Trade-off a due colonne: due poli contrapposti, ciascuno con i suoi punti."""
+    sides = [s["left"], s["right"]]
+    nmax = max(len(d["points"]) for d in sides)
+    fig, ax = _fig(10, max(3.0, 0.72 * nmax + 2.0))
+    _title(ax, s["title"])
+    top, bot = 87, (14 if s.get("note") else 7)
+    lows = []
+    for i, d in enumerate(sides):
+        x, w = (2 + i * 50), 46
+        _box(ax, x, top - 10, w, 9, d["label"], None, i * 2, fs=9.6)
+        y = top - 13
+        for pt in d["points"]:
+            lines = _wrap("• " + pt, max(int(w / 1.05), 18))
+            h = 3.4 + 2.7 * (lines.count("\n") + 1)
+            y -= h + 1.5
+            ax.add_patch(FancyBboxPatch((x, y), w, h,
+                                        boxstyle="round,pad=0,rounding_size=1",
+                                        linewidth=0.8, edgecolor=LINE, facecolor="#fbfcfd"))
+            ax.text(x + 1.6, y + h / 2, lines, ha="left", va="center", fontsize=7.5, color=INK)
+        lows.append(y)
+    ax.plot([50, 50], [min(lows) - 1, top - 1], color=LINE, lw=1.0, linestyle=(0, (3, 3)))
+    _note(ax, s.get("note"), max(1, min(lows) - 5))
+    fig.savefig(path, dpi=200, bbox_inches="tight", facecolor=BG); plt.close(fig)
+
 def draw_tradeoff(s, path):
+    if "axes" not in s:
+        return draw_poles(s, path)
     ax_list = s["axes"]; n = len(ax_list)
     fig, ax = _fig(9.5, max(2.6, 0.62 * n + 1.2))
     _title(ax, s["title"])

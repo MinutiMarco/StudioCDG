@@ -50,8 +50,10 @@ def h_flow(s):
     return "".join(p)
 
 def h_cycle(s):
+    nodes = s["nodes"] if "nodes" in s else [
+        st["label"] + ("\n" + st["detail"] if st.get("detail") else "") for st in s["steps"]]
     p = ['<ol class="dg-flow dg-cycle">']
-    for nd in s["nodes"]:
+    for nd in nodes:
         parts = nd.split("\n")
         p.append('<li><span class="dg-lbl">' + inline(parts[0]) + '</span>' +
                  (f'<span class="dg-det">{nl(chr(10).join(parts[1:]))}</span>' if len(parts) > 1 else "") +
@@ -70,7 +72,23 @@ def h_hier(s):
     p.append("</div></div>")
     return "".join(p)
 
+def h_grid(s):
+    """Matrice a griglia righe x colonne."""
+    p = ['<div class="dg-scroll"><table class="dg-tab dg-grid"><thead><tr><th></th>']
+    for c in s["cols"]:
+        p.append(f"<th>{inline(c)}</th>")
+    p.append("</tr></thead><tbody>")
+    for i, r in enumerate(s["rows"]):
+        p.append(f"<tr><th>{inline(r)}</th>")
+        for v in (s["cells"][i] if i < len(s["cells"]) else []):
+            p.append(f"<td>{inline(str(v))}</td>")
+        p.append("</tr>")
+    p.append("</tbody></table></div>")
+    return "".join(p)
+
 def h_matrix(s):
+    if "quadrants" not in s:
+        return h_grid(s)
     q = {d["pos"]: d for d in s["quadrants"]}
     xa = s.get("xaxis", ["", ""]); ya = s.get("yaxis", ["", ""])
     def cell(pos):
@@ -86,15 +104,32 @@ def h_matrix(s):
             "</div>")
 
 def h_pyramid(s):
-    n = len(s["levels"])
+    lv = [(t, None) if isinstance(t, str) else (t["label"], t.get("detail"))
+          for t in s["levels"]]
+    n = len(lv)
     p = ['<div class="dg-pyr">']
-    for k, t in enumerate(s["levels"]):
+    for k, (lab, det) in enumerate(lv):
         w = 46 + 54 * (k + 1) / n
-        p.append(f'<div class="dg-lv" style="width:{w:.0f}%">{inline(t)}</div>')
+        p.append(f'<div class="dg-lv" style="width:{w:.0f}%"><span class="dg-lbl">'
+                 + inline(lab) + "</span>"
+                 + (f'<span class="dg-det">{nl(det)}</span>' if det else "") + "</div>")
+    p.append("</div>")
+    return "".join(p)
+
+def h_poles(s):
+    """Trade-off a due colonne contrapposte."""
+    p = ['<div class="dg-poles">']
+    for d in (s["left"], s["right"]):
+        p.append('<div class="dg-pol"><h5>' + inline(d["label"]) + "</h5><ul>")
+        for pt in d["points"]:
+            p.append("<li>" + inline(pt) + "</li>")
+        p.append("</ul></div>")
     p.append("</div>")
     return "".join(p)
 
 def h_tradeoff(s):
+    if "axes" not in s:
+        return h_poles(s)
     p = ['<div class="dg-trade">']
     for lab, a, b in s["axes"]:
         p.append(f'<div class="dg-ax"><span class="dg-axl">{inline(lab)}</span>'
@@ -315,6 +350,19 @@ main{min-width:0;display:flex;flex-direction:column;gap:22px}
 .dg-pyr{display:flex;flex-direction:column;align-items:center;gap:7px}
 .dg-lv{background:var(--surface);border:1px solid var(--rule);border-radius:8px;
   padding:10px 14px;text-align:center;font-size:13.2px;font-weight:600;color:var(--ink);line-height:1.35}
+
+.dg-lv .dg-lbl{display:block}
+.dg-lv .dg-det{display:block;margin-top:4px;font-weight:400;font-size:12.2px;
+  color:var(--ink-2);line-height:1.45}
+
+.dg-poles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.dg-pol{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:13px 15px}
+.dg-pol h5{margin:0 0 9px;font-size:12.6px;font-weight:700;color:var(--pc);
+  letter-spacing:.03em;text-transform:uppercase}
+.dg-pol ul{margin:0;padding-left:17px}
+.dg-pol li{font-size:13px;line-height:1.5;color:var(--ink-2);margin:0 0 5px}
+
+.dg-grid td{vertical-align:top}
 
 .dg-trade{display:grid;gap:9px}
 .dg-ax{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(90px,1fr) 34px minmax(90px,1fr);
