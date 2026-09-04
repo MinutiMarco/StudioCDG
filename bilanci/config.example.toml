@@ -1,0 +1,45 @@
+# Copia questo file in `config.toml` e compilalo. `config.toml` NON va su git.
+# Le credenziali si possono anche passare da ambiente, che vince sul file:
+#   export OPENAPI_TOKEN="..."          (token generato in console.openapi.com)
+#   export OPENAPI_USERNAME="..."       (in alternativa: username + apikey)
+#   export OPENAPI_APIKEY="..."
+
+[auth]
+# Modo consigliato: genera il token dalla console Openapi, con gli scope dei
+# servizi che usi, e incollalo qui.
+token = ""
+# In alternativa il token viene coniato al volo via OAuth con queste credenziali:
+username = ""
+apikey = ""
+scopes = [
+  "GET:imprese.openapi.it/advance",
+  "GET:imprese.openapi.it/base",
+  "POST:visurecamerali.openapi.it/bilancio-riclassificato",
+  "GET:visurecamerali.openapi.it/bilancio-riclassificato",
+  "POST:visurecamerali.openapi.it/bilancio-ottico",
+  "GET:visurecamerali.openapi.it/bilancio-ottico",
+]
+
+# Percorsi degli endpoint. Sono qui, e non nel codice, perche' dipendono dai
+# servizi attivi sul tuo account: se una chiamata risponde 404 o 401, confronta
+# con la documentazione del TUO piano su console.openapi.com e correggi qui.
+[endpoint]
+imprese = "https://imprese.openapi.it"
+ricerca_base = "/base"
+ricerca_advance = "/advance"
+chiuse = "/closed"
+visure = "https://visurecamerali.openapi.it"
+bilancio_ottico = "/bilancio-ottico"
+allegati = "/bilancio-ottico/{id}/allegati"
+riclassificato = "https://visurecamerali.openapi.it/bilancio-riclassificato"
+
+[ricerca]
+limite_peer = 40      # imprese nel campione di confronto
+pagina = 20           # record per pagina nella ricerca
+solo_attive = true
+max_crediti = 60      # tetto di sicurezza: chiamate a pagamento per esecuzione
+
+[percorsi]
+cache = "cache"       # risposte JSON gia' pagate: non si ripagano
+dati = "dati"         # target, peer, bilanci, indici
+output = "output"     # CSV e report HTML

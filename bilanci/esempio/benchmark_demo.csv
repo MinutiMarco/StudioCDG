@@ -1,0 +1,27 @@
+﻿etichetta;target;percentile;giudizio;n;min;q1;mediana;q3;max;media;dev_std
+Ricavi (€);8400000;21,43;tra le più piccole del campione;28;3426785,53;9954788,83;13935909,96;18806463,53;21205346,63;13633480,18;5696219,56
+EBITDA (€);739200,00;17,86;tra le più piccole del campione;28;337564,13;886500,69;1673862,47;2129790,34;2892517,81;1522686,54;763036,17
+EBIT (€);445200,00;25,00;sotto la mediana per dimensione;28;196638,68;491897,38;1134377,30;1447368,21;2227819,01;1045514,73;603190,51
+Utile netto (€);193536,00;28,57;sotto la mediana per dimensione;28;-148152,16;192175,98;613580,18;797228,30;1412261,18;565347,30;404589,74
+Patrimonio netto (€);2352000,00;21,43;tra le più piccole del campione;28;959499,95;2787340,87;3902054,79;5265809,79;5937497,06;3817374,45;1594941,48
+Totale attivo (€);7980000,00;21,43;tra le più piccole del campione;28;3255446,25;9457049,39;13239114,46;17866140,35;20145079,30;12951806,17;5411408,58
+Posizione finanziaria netta (€);3024000,00;35,71;sotto la mediana per dimensione;28;-201112,21;2488212,00;4243759,46;6106539,60;9206508,23;4388194,24;2717102,33
+Dipendenti;41;30,36;sotto la mediana per dimensione;28;16;37,25;60,00;74,25;92;54,71;23,90
+EBITDA margin %;8,80;25,00;sotto la mediana;28;5,25;8,96;11,89;12,99;15,39;11,10;2,81
+ROS % (EBIT/Ricavi);5,30;25,00;sotto la mediana;28;1,75;5,46;8,39;9,49;11,89;7,60;2,81
+ROI % (EBIT/Attivo);5,58;25,00;sotto la mediana;28;1,84;5,74;8,83;9,99;12,52;8,00;2,96
+ROE % (Utile/PN);8,23;21,43;molto sotto la media di settore;28;-3,10;9,03;16,54;19,64;26,56;14,63;7,52
+Utile netto / Ricavi %;2,30;21,43;molto sotto la media di settore;28;-0,87;2,53;4,63;5,50;7,44;4,10;2,10
+Valore aggiunto / Ricavi %;32,80;25,00;sotto la mediana;28;29,25;32,96;35,89;36,99;39,39;35,10;2,81
+Costo lavoro / Ricavi %;24,00;57,14;sotto la mediana;28;24,00;24,00;24,00;24,00;24,00;24,00;0,00
+Leva (Attivo/PN);3,39;92,86;molto sotto la media di settore;28;3,39;3,39;3,39;3,39;3,39;3,39;0,00
+Debiti fin. / PN;1,50;50,00;in linea con la mediana;28;0,18;0,96;1,46;1,75;2,18;1,37;0,53
+PFN / EBITDA;4,09;75,00;sotto la mediana;28;-0,08;2,16;3,00;4,12;10,11;3,16;1,94
+Oneri finanziari / Ricavi %;2,10;50,00;in linea con la mediana;28;0,25;1,35;2,04;2,45;3,06;1,91;0,74
+Current ratio;1,77;23,21;molto sotto la media di settore;28;1,77;1,77;1,77;1,77;1,77;1,77;0,00
+Rotazione del capitale;1,05;17,86;molto sotto la media di settore;28;1,05;1,05;1,05;1,05;1,05;1,05;0,00
+Giorni medi di credito;94,90;50,00;in linea con la mediana;28;94,90;94,90;94,90;94,90;94,90;94,90;0,00
+Giorni medi di magazzino;69,35;44,64;sopra la mediana;28;69,35;69,35;69,35;69,35;69,35;69,35;0,00
+Ricavi per dipendente (€);204878,05;39,29;sotto la mediana;28;46318,78;169363,86;231287,57;519258,48;949569,71;336520,10;268706,28
+Valore aggiunto per dipendente (€);67200,00;39,29;sotto la mediana;28;15087,85;61292,03;79498,12;170227,65;372522,62;118397,94;96086,37
+Costo medio per dipendente (€);49170,73;39,29;sopra la mediana;28;11116,51;40647,33;55509,02;124622,04;227896,73;80764,82;64489,51

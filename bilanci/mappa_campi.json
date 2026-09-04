@@ -1,0 +1,11 @@
+{
+  "_nota": "Alias aggiuntivi per le voci di bilancio, in testa a quelli predefiniti. Usa `cli.py ispeziona dati/bilanci/riclassificato/<file>.json` per leggere i nomi reali del tuo payload e aggiungerli qui.",
+  "ricavi": [],
+  "ebitda": [],
+  "ebit": [],
+  "utile_netto": [],
+  "patrimonio_netto": [],
+  "attivo_totale": [],
+  "debiti_finanziari": [],
+  "dipendenti": []
+}

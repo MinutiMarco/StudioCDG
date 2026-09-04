@@ -1,3 +1,9 @@
 testi/
 __pycache__/
 build/img/
+
+# benchmark bilanci: credenziali e dati acquistati
+bilanci/config.toml
+bilanci/cache/
+bilanci/dati/
+bilanci/output/

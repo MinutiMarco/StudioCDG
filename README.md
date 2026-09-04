@@ -16,3 +16,10 @@ Riassunto ragionato dei 39 capitoli con schemi visivi, in due formati:
 | `build_*.py` | generazione degli schemi, del Word e della mappa HTML |
 
 I testi sorgente (`testi/`) non sono versionati: derivano dai PDF personali dell'utente.
+
+## Benchmark di settore
+
+`bilanci/` contiene uno strumento a parte: scarica tramite le API Openapi l'anagrafica e i
+bilanci depositati delle società di un settore e produce il posizionamento di una specifica
+società rispetto ai suoi concorrenti (quartili, percentili, report HTML).
+Istruzioni in [`bilanci/README.md`](bilanci/README.md).
