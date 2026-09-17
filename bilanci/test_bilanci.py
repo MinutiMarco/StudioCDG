@@ -129,6 +129,80 @@ class TestImprese(unittest.TestCase):
         self.assertEqual(cl.chiamate[0][2]["dry_run"], 1)
 
 
+class ClientProvince(ClientFinto):
+    """Risponde in base alla provincia richiesta: conteggi finti e record finti."""
+
+    def __init__(self, per_provincia, **kw):
+        super().__init__({}, **kw)
+        self.per_provincia = per_provincia
+
+    def chiama(self, metodo, url, params=None, body=None, a_pagamento=False, **kw):
+        self.chiamate.append((metodo, url, params, body))
+        if a_pagamento:
+            self._spendi(url)
+        pv = (params or {}).get("provincia")
+        n = self.per_provincia.get(pv, 0)
+        if (params or {}).get("dry_run"):
+            return {"data": {"count": n}}
+        quanti = min(n, (params or {}).get("limit", 20))
+        return {"data": [{"denominazione": f"{pv} impresa {i}", "piva": f"{pv}{i:09d}",
+                          "codice_ateco": "45.19"} for i in range(quanti)]}
+
+
+class TestAmbitoGeografico(unittest.TestCase):
+    def test_province_del_nord(self):
+        nord = imprese.province_di(ambito="nord")
+        self.assertEqual(len(nord), 47)
+        for sigla in ("BG", "MI", "TO", "VR", "BO", "TS", "AO", "BZ"):
+            self.assertIn(sigla, nord)
+        for sigla in ("RM", "NA", "PA", "FI"):
+            self.assertNotIn(sigla, nord)
+        self.assertEqual(len(imprese.province_di(ambito="nordovest")), 25)
+        self.assertEqual(len(imprese.province_di(ambito="nordest")), 22)
+
+    def test_regioni_ed_elenco_esplicito(self):
+        self.assertEqual(imprese.province_di(regioni=["Lombardia"]),
+                         ["VA", "CO", "SO", "MI", "BG", "BS", "PV", "CR", "MN", "LC", "LO", "MB"])
+        self.assertEqual(imprese.province_di(province=["bg", " bs "]), ["BG", "BS"])
+        self.assertEqual(imprese.province_di(ambito="nazionale"), [])
+        with self.assertRaises(ValueError):
+            imprese.province_di(regioni=["Padania"])
+
+    def test_ricerca_salta_le_province_vuote(self):
+        cfg = configurazione.carica("config.inesistente.toml")
+        cl = ClientProvince({"MI": 12, "BG": 5, "BS": 0, "SO": 0})
+        peer = imprese.cerca_peer_province(cl, cfg, {"codice_ateco": "4519"},
+                                           ["MI", "BG", "BS", "SO"], limite=14, pagina=20)
+        self.assertEqual(len(peer), 14)                       # 12 di MI + 2 di BG
+        province_interrogate = {p for _, _, par, _ in cl.chiamate
+                                for p in [(par or {}).get("provincia")]
+                                if par and not par.get("dry_run")}
+        self.assertEqual(province_interrogate, {"MI", "BG"})  # BS e SO mai pagate
+        self.assertEqual(peer[0]["denominazione"], "MI impresa 0")   # dalla piu' popolata
+
+    def test_elenco_da_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "peer.txt"
+            f.write_text("# concorrenti\npiva;nome\nIT 03242670168 ; Lodotruck  # note\n\n"
+                         "01234567890\n", encoding="utf-8")
+            voci = imprese.leggi_elenco(f)
+        self.assertEqual([v["id"] for v in voci], ["03242670168", "01234567890"])
+        self.assertEqual(voci[0]["denominazione"], "Lodotruck")
+
+    def test_peer_da_elenco_usa_le_schede(self):
+        cfg = configurazione.carica("config.inesistente.toml")
+        cl = ClientFinto({"/advance": RISPOSTA_ADVANCE})
+        peer = imprese.peer_da_elenco(cl, cfg, [{"id": "01234567890", "denominazione": None}])
+        self.assertEqual(len(peer), 1)
+        self.assertEqual(peer[0]["ateco"], "25.62")
+        self.assertEqual(cl.crediti_spesi, 1)
+        cl2 = ClientFinto({"/advance": RISPOSTA_ADVANCE})
+        peer2 = imprese.peer_da_elenco(cl2, cfg, [{"id": "01234567890", "denominazione": "X"}],
+                                       con_anagrafica=False)
+        self.assertEqual(cl2.crediti_spesi, 0)                # nessuna scheda acquistata
+        self.assertEqual(peer2[0]["denominazione"], "X")
+
+
 class TestIndicatori(unittest.TestCase):
     def setUp(self):
         self.per_anno = indicatori.voci(RISPOSTA_RICLASSIFICATO, indicatori.ALIAS_VOCI)

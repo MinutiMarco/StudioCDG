@@ -24,6 +24,45 @@ ALIAS = {
 }
 
 
+# Le API filtrano per provincia, non per macroarea: "Nord Italia" va espanso.
+PROVINCE_REGIONE = {
+    "valle d'aosta": ["AO"],
+    "piemonte": ["TO", "VC", "NO", "CN", "AT", "AL", "BI", "VB"],
+    "liguria": ["IM", "SV", "GE", "SP"],
+    "lombardia": ["VA", "CO", "SO", "MI", "BG", "BS", "PV", "CR", "MN", "LC", "LO", "MB"],
+    "trentino-alto adige": ["BZ", "TN"],
+    "veneto": ["VR", "VI", "BL", "TV", "VE", "PD", "RO"],
+    "friuli-venezia giulia": ["UD", "GO", "TS", "PN"],
+    "emilia-romagna": ["PC", "PR", "RE", "MO", "BO", "FE", "RA", "FC", "RN"],
+}
+
+MACROAREE = {
+    "nordovest": ["valle d'aosta", "piemonte", "liguria", "lombardia"],
+    "nordest": ["trentino-alto adige", "veneto", "friuli-venezia giulia", "emilia-romagna"],
+}
+MACROAREE["nord"] = MACROAREE["nordovest"] + MACROAREE["nordest"]
+
+
+def province_di(ambito=None, regioni=None, province=None):
+    """Elenco di sigle provinciali da ambito, regioni o elenco esplicito.
+
+    Restituisce [] quando la ricerca e' nazionale o limitata a una sola provincia
+    passata direttamente nei filtri.
+    """
+    if province:
+        return [p.strip().upper() for p in province if p.strip()]
+    nomi = []
+    if regioni:
+        nomi = [r.strip().lower() for r in regioni if r.strip()]
+    elif ambito in MACROAREE:
+        nomi = MACROAREE[ambito]
+    fuori = [n for n in nomi if n not in PROVINCE_REGIONE]
+    if fuori:
+        raise ValueError(f"Regioni non riconosciute: {', '.join(fuori)}. "
+                         f"Valide: {', '.join(sorted(PROVINCE_REGIONE))}")
+    return [sigla for n in nomi for sigla in PROVINCE_REGIONE[n]]
+
+
 def normalizza_id(identificativo):
     """Ripulisce partita IVA / codice fiscale: 'IT 01234567890 ' -> '01234567890'."""
     s = re.sub(r"[^0-9A-Za-z]", "", str(identificativo)).upper()
@@ -71,7 +110,9 @@ def filtri_da_target(target, cifre_ateco=4, ambito="nazionale",
 
     - `cifre_ateco`: 2 = divisione, 3 = gruppo, 4 = classe, 6 = sottocategoria.
       Meno cifre = piu' imprese, settore piu' largo.
-    - `ambito`: "nazionale" | "provincia" | "regione".
+    - `ambito`: "nazionale" | "provincia" | "regione" | "nord" | "nordovest" | "nordest".
+      Gli ambiti multi-provincia non entrano nei filtri: la provincia viene
+      aggiunta una alla volta da chi esegue la ricerca (vedi `province_di`).
     - `banda_fatturato`: moltiplicatori sul fatturato del target, per confrontare
       imprese di dimensione paragonabile (un benchmark tra taglie diverse mente).
     """
@@ -128,3 +169,93 @@ def cerca_peer(client, cfg, filtri, limite=40, pagina=20, escludi=()):
         if len(record) < params["limit"]:
             break
     return trovate[:limite]
+
+
+def conta_per_provincia(client, cfg, filtri, province):
+    """Conteggio gratuito provincia per provincia: dice dov'e' il settore.
+
+    Serve a non sprecare chiamate a pagamento su province vuote e a capire se
+    l'ambito scelto e' abbastanza capiente.
+    """
+    esito = {}
+    for sigla in province:
+        f = dict(filtri); f["provincia"] = sigla
+        try:
+            esito[sigla] = conta(client, cfg, f)
+        except Exception as e:                      # una provincia muta non ferma il giro
+            print(f"  ! {sigla}: {str(e)[:120]}")
+            esito[sigla] = None
+    return esito
+
+
+def cerca_peer_province(client, cfg, filtri, province, limite=40, pagina=20,
+                        escludi=(), conteggi=None):
+    """Ricerca su piu' province, dalla piu' popolata alla meno.
+
+    Le province senza imprese vengono saltate: il conteggio e' gratuito, la
+    ricerca no.
+    """
+    conteggi = conteggi or conta_per_provincia(client, cfg, filtri, province)
+    ordinate = sorted((p for p in province if (conteggi.get(p) or 0) > 0),
+                      key=lambda p: -(conteggi.get(p) or 0))
+    trovate, visti = [], {normalizza_id(x) for x in escludi if x}
+    for sigla in ordinate:
+        if len(trovate) >= limite:
+            break
+        f = dict(filtri); f["provincia"] = sigla
+        quota = limite - len(trovate)
+        parziali = cerca_peer(client, cfg, f, limite=quota, pagina=pagina, escludi=visti)
+        for imp in parziali:
+            visti.add(imp["id"])
+        trovate.extend(parziali)
+        print(f"  {sigla}: {len(parziali)} imprese (totale {len(trovate)}/{limite})")
+    return trovate[:limite]
+
+
+def leggi_elenco(percorso):
+    """Partite IVA da file: una per riga, oppure CSV con la P.IVA nella prima colonna.
+
+    Righe vuote e righe che iniziano con # vengono ignorate; dopo la prima
+    colonna si puo' mettere il nome dell'impresa, che viene conservato.
+    """
+    voci = []
+    for riga in open(percorso, encoding="utf-8-sig"):
+        riga = riga.strip()
+        riga = re.split(r"\s#", riga, maxsplit=1)[0].strip()   # commento a fine riga
+        if not riga or riga.startswith("#"):
+            continue
+        pezzi = [p.strip() for p in re.split(r"[;,\t]", riga)]
+        ident = normalizza_id(pezzi[0])
+        if not ident or not ident[0].isdigit():
+            continue                                 # intestazione del CSV
+        voci.append({"id": ident, "denominazione": pezzi[1] if len(pezzi) > 1 else None})
+    return voci
+
+
+def peer_da_elenco(client, cfg, voci, con_anagrafica=True):
+    """Costruisce il campione da una lista di partite IVA gia' scelta.
+
+    Con `con_anagrafica` si paga una scheda per impresa e si ottengono ATECO,
+    sede, fatturato e dipendenti; senza, restano solo gli identificativi e il
+    confronto si basa unicamente sui bilanci.
+    """
+    peer = []
+    for voce in voci:
+        if not con_anagrafica:
+            peer.append({"id": voce["id"], "piva": voce["id"],
+                         "denominazione": voce.get("denominazione")})
+            continue
+        try:
+            a, _ = scheda(client, cfg, voce["id"], avanzata=True)
+        except Exception as e:
+            print(f"  ! {voce['id']}: {str(e)[:150]}")
+            continue
+        if not a:
+            print(f"  ! {voce['id']}: non trovata nel Registro Imprese")
+            continue
+        a["id"] = voce["id"]
+        a["denominazione"] = a.get("denominazione") or voce.get("denominazione")
+        peer.append(a)
+        print(f"  · {a['denominazione']} — {a.get('provincia')} — ATECO {a.get('ateco')} "
+              f"— fatt. {a.get('fatturato')}")
+    return peer

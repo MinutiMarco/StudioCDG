@@ -81,8 +81,17 @@ def _target(cfg, args):
 
 def _filtri(target, args):
     banda = None if args.banda == 0 else (1 / args.banda, args.banda)
+    ambito = args.ambito if args.ambito in ("provincia", "regione") else "nazionale"
     return imprese.filtri_da_target(target, cifre_ateco=args.cifre_ateco,
-                                    ambito=args.ambito, banda_fatturato=banda)
+                                    ambito=ambito, banda_fatturato=banda)
+
+
+def _province(args):
+    """Province da interrogare una per una: macroaree, regioni o elenco esplicito."""
+    return imprese.province_di(
+        ambito=args.ambito,
+        regioni=(args.regioni or "").split(",") if getattr(args, "regioni", None) else None,
+        province=(args.province or "").split(",") if getattr(args, "province", None) else None)
 
 
 def cmd_stima(cfg, args):
@@ -91,12 +100,22 @@ def cmd_stima(cfg, args):
     cl = _client(cfg, args)
     print(f"\nSocietà: {target.get('denominazione')} — ATECO {target.get('ateco')} — "
           f"fatturato {target.get('fatturato')}")
+    province = _province(args)
     for cifre in (args.cifre_ateco, 3, 2):
         a = argparse.Namespace(**vars(args)); a.cifre_ateco = cifre
         f = _filtri(target, a)
         n = imprese.conta(cl, cfg, f)
         print(f"  ATECO {cifre} cifre {f.get('codice_ateco','—'):>8} · {args.ambito:11} · "
               f"imprese: {n if n is not None else 'n/d'}   filtri={f}")
+    if province:
+        f = _filtri(target, args)
+        print(f"\nDettaglio per provincia ({len(province)} province, conteggio gratuito):")
+        conteggi = imprese.conta_per_provincia(cl, cfg, f, province)
+        totale = sum(v for v in conteggi.values() if v)
+        for sigla, n in sorted(conteggi.items(), key=lambda kv: -(kv[1] or 0)):
+            if n:
+                print(f"    {sigla}  {n:>5}")
+        print(f"    {'TOTALE':<6}{totale:>5}")
     print("\nIl conteggio (dry_run) non consuma crediti. La ricerca vera sì: "
           f"circa {args.limite} record.")
     return 0
@@ -105,15 +124,51 @@ def cmd_stima(cfg, args):
 def cmd_peer(cfg, args):
     target = _target(cfg, args)
     cl = _client(cfg, args)
+
+    # a) campione scelto a mano: una lista di partite IVA
+    if args.da_file or args.pive:
+        voci = imprese.leggi_elenco(args.da_file) if args.da_file else [
+            {"id": imprese.normalizza_id(x), "denominazione": None}
+            for x in args.pive.split(",") if x.strip()]
+        id_target = target.get("id") or imprese.normalizza_id(target.get("piva") or "")
+        voci = [v for v in voci if v["id"] and v["id"] != id_target]
+        print(f"Elenco fornito: {len(voci)} partite IVA"
+              f"{' (esclusa la società analizzata)' if len(voci) else ''}")
+        if not args.conferma:
+            costo = 0 if args.senza_anagrafica else len(voci)
+            print(f"Aggiungi --conferma per procedere ({costo} chiamate a pagamento).")
+            return 0
+        peer = imprese.peer_da_elenco(cl, cfg, voci, con_anagrafica=not args.senza_anagrafica)
+        _scrivi(cfg, "peer.json", {"filtri": {"origine": args.da_file or "elenco manuale"},
+                                   "peer": peer})
+        print(f"\nSalvate {len(peer)} imprese in {_file(cfg,'peer.json')} "
+              f"({cl.crediti_spesi} chiamate a pagamento).")
+        return 0
+
+    # b) ricerca sul Registro Imprese
     filtri = _filtri(target, args)
-    n = imprese.conta(cl, cfg, filtri)
-    print(f"Imprese che soddisfano i filtri: {n if n is not None else 'n/d'} — ne scarico {args.limite}")
+    province = _province(args)
+    if province:
+        conteggi = imprese.conta_per_provincia(cl, cfg, filtri, province)
+        totale = sum(v for v in conteggi.values() if v)
+        attive = [p for p in province if (conteggi.get(p) or 0) > 0]
+        print(f"Imprese nelle {len(province)} province dell'ambito «{args.ambito}»: {totale} "
+              f"(presenti in {len(attive)} province) — ne scarico {args.limite}")
+    else:
+        conteggi = None
+        n = imprese.conta(cl, cfg, filtri)
+        print(f"Imprese che soddisfano i filtri: {n if n is not None else 'n/d'} — ne scarico {args.limite}")
     if not args.conferma:
         print("Aggiungi --conferma per eseguire la ricerca (consuma crediti).")
         return 0
-    peer = imprese.cerca_peer(cl, cfg, filtri, limite=args.limite,
-                              pagina=cfg["ricerca"]["pagina"],
-                              escludi=[target.get("piva"), target.get("cf"), target.get("id")])
+    escludi = [target.get("piva"), target.get("cf"), target.get("id")]
+    if province:
+        peer = imprese.cerca_peer_province(cl, cfg, filtri, province, limite=args.limite,
+                                           pagina=cfg["ricerca"]["pagina"], escludi=escludi,
+                                           conteggi=conteggi)
+    else:
+        peer = imprese.cerca_peer(cl, cfg, filtri, limite=args.limite,
+                                  pagina=cfg["ricerca"]["pagina"], escludi=escludi)
     _scrivi(cfg, "peer.json", {"filtri": filtri, "peer": peer})
     print(f"Salvate {len(peer)} imprese in {_file(cfg,'peer.json')} "
           f"({cl.crediti_spesi} chiamate a pagamento).")
@@ -256,7 +311,14 @@ def principale(argv=None):
             sp.add_argument("identificativo", nargs="?", help="partita IVA o codice fiscale")
         sp.add_argument("--cifre-ateco", type=int, default=4,
                         help="ampiezza del settore: 2 divisione, 3 gruppo, 4 classe, 6 sottocategoria")
-        sp.add_argument("--ambito", choices=["nazionale", "provincia", "regione"], default="nazionale")
+        sp.add_argument("--ambito",
+                        choices=["nazionale", "provincia", "regione", "nord", "nordovest", "nordest"],
+                        default="nazionale",
+                        help="ambito geografico; nord/nordovest/nordest interrogano una provincia alla volta")
+        sp.add_argument("--regioni", default="",
+                        help="elenco di regioni separate da virgola, al posto di --ambito")
+        sp.add_argument("--province", default="",
+                        help="sigle provinciali separate da virgola (es. BG,BS,MI)")
         sp.add_argument("--banda", type=float, default=4.0,
                         help="ampiezza dimensionale: fatturato tra 1/N e N volte quello del target (0 = nessun filtro)")
         sp.add_argument("--limite", type=int, default=40)
@@ -270,7 +332,12 @@ def principale(argv=None):
     s.set_defaults(fn=cmd_scheda)
 
     comune(sub.add_parser("stima", help="quante imprese comparabili (gratis)")).set_defaults(fn=cmd_stima)
-    comune(sub.add_parser("peer", help="scarica il campione di confronto")).set_defaults(fn=cmd_peer)
+    s = comune(sub.add_parser("peer", help="scarica il campione di confronto"))
+    s.add_argument("--da-file", default="", help="file con una partita IVA per riga (o CSV: P.IVA;nome)")
+    s.add_argument("--pive", default="", help="partite IVA separate da virgola")
+    s.add_argument("--senza-anagrafica", action="store_true",
+                   help="con --da-file/--pive: non scarica le schede, usa solo gli identificativi")
+    s.set_defaults(fn=cmd_peer)
 
     s = comune(sub.add_parser("scarica", help="scarica i bilanci e calcola gli indici"))
     s.add_argument("--anno", type=int, default=None, help="anno di chiusura (default: ultimo disponibile)")
@@ -286,6 +353,9 @@ def principale(argv=None):
 
     s = comune(sub.add_parser("tutto", help="stima, peer, scarica e benchmark in sequenza"))
     s.add_argument("--anno", type=int, default=None)
+    s.add_argument("--da-file", default="")
+    s.add_argument("--pive", default="")
+    s.add_argument("--senza-anagrafica", action="store_true")
     s.add_argument("--solo-peer", action="store_true")
     s.add_argument("--riscarica", action="store_true")
     s.add_argument("--ripiego", action="store_true")

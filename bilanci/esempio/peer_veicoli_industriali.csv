@@ -1,0 +1,17 @@
+# Elenco di partenza per il benchmark del commercio di veicoli industriali (ATECO 45.19.01).
+# Formato: partita IVA ; denominazione. Le righe con # sono ignorate.
+# Uso:  python3 cli.py peer 03242670168 --da-file esempio/peer_veicoli_industriali.csv --conferma
+#
+# Le denominazioni e i fatturati indicati nei commenti provengono da portali che
+# riespongono i bilanci depositati: vanno confermati dalla chiamata `scheda`,
+# che legge il Registro Imprese. L'elenco e' un punto di partenza, non un campione
+# completo: per costruirlo tutto usa la ricerca per ATECO e provincia
+# (`--ambito nord`), che interroga direttamente il Registro.
+#
+00413040130 ; Tentori Veicoli Industriali S.p.A.      # Molteno (LC) — ~102 mln 2024
+00562420240 ; Trivellato Veicoli Industriali S.r.l.   # Torri di Quartesolo (VI) — ~127 mln 2024
+11038360159 ; Re.Vi. Veicoli Industriali S.p.A.       # Parabiago (MI) — ~27 mln 2024
+#
+# Da valutare prima di includerlo: e' la filiale italiana del costruttore, non un
+# concessionario indipendente, quindi ha un modello di business diverso.
+# 05116370155 ; DAF Veicoli Industriali S.p.A.         # Assago (MI)

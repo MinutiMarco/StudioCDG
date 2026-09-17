@@ -74,6 +74,36 @@ Risultati in `output/`: `benchmark_<anno>.csv` (indice per indice: società, qua
 percentile, lettura), `imprese_<anno>.csv` (il dettaglio impresa per impresa) e
 `benchmark_<anno>.html`, una pagina autonoma apribile da disco e allegabile a una relazione.
 
+## 3-bis. Due modi di costruire il campione
+
+**a) Ricerca sul Registro Imprese** (automatica). Le API filtrano per **provincia**, non per
+macroarea: `--ambito nord` (oppure `nordovest`, `nordest`) espande l'ambito nelle 47 province
+settentrionali e le interroga una alla volta. Prima conta — gratis — quante imprese ci sono in
+ciascuna, poi paga la ricerca solo dove ce ne sono, partendo dalle province più popolate:
+
+```bash
+python3 cli.py stima 03242670168 --ambito nord --cifre-ateco 6     # distribuzione per provincia, gratis
+python3 cli.py peer  03242670168 --ambito nord --cifre-ateco 6 --banda 3 --limite 30 --conferma
+```
+
+In alternativa `--regioni "Lombardia,Veneto,Emilia-Romagna"` oppure `--province "BG,BS,MI,VR"`.
+
+**b) Elenco di partite IVA scelto a mano.** Quando i concorrenti li conosci già — o quando il
+codice ATECO non li separa bene dal resto del settore — scrivili in un file, una P.IVA per riga
+(facoltativa la denominazione dopo `;`), e il campione è quello:
+
+```bash
+python3 cli.py peer 03242670168 --da-file concorrenti.csv --conferma
+python3 cli.py peer 03242670168 --pive 00413040130,00562420240,11038360159 --conferma
+```
+
+Ogni impresa costa una scheda (`--senza-anagrafica` la salta e tiene solo l'identificativo, ma
+resti senza ATECO, sede e fatturato per i controlli). Un esempio pronto:
+`esempio/peer_veicoli_industriali.csv`.
+
+Le due strade si sommano: parti dalla ricerca, guarda chi è entrato, e correggi a mano il file
+togliendo chi non è un vero concorrente. Il campione finale è sempre in `dati/peer.json`.
+
 ## 4. Come si sceglie il campione (la parte che conta davvero)
 
 Il numero finale vale quanto vale il gruppo di confronto. Tre leve:
@@ -82,7 +112,8 @@ Il numero finale vale quanto vale il gruppo di confronto. Tre leve:
   `6` sottocategoria. Sei cifre danno concorrenti veri ma spesso pochissimi; due cifre
   danno numeri robusti ma mescolano attività diverse. Il compromesso usuale è **4**, con
   un controllo a 3 se il campione scende sotto ~15 imprese.
-- **`--ambito`** — `nazionale`, `regione` o `provincia`. Il confine geografico conta se il
+- **`--ambito`** — `nazionale`, `nord`, `nordovest`, `nordest`, `regione` o `provincia`
+  (più `--regioni` e `--province` per ritagli su misura). Il confine geografico conta se il
   mercato è locale (servizi, edilizia, distribuzione); non conta per chi esporta.
 - **`--banda`** — confronta solo imprese di taglia paragonabile: con `--banda 4` entrano
   quelle con fatturato tra un quarto e quattro volte quello della società analizzata.
@@ -158,6 +189,7 @@ voce giusta e rilancia `scarica` (il bilancio è già in locale, non si ripaga).
 | File | Contenuto |
 |---|---|
 | `cli.py` | riga di comando: `scheda`, `stima`, `peer`, `scarica`, `benchmark`, `tutto`, `ispeziona` |
+| `esempio/peer_veicoli_industriali.csv` | elenco di partenza per il commercio di veicoli industriali |
 | `openapi_client.py` | token OAuth, chiamate HTTP, backoff, cache su disco, tetto di spesa |
 | `configurazione.py` | lettura di `config.toml` e degli endpoint |
 | `imprese.py` | anagrafica della società e costruzione del campione di confronto |
