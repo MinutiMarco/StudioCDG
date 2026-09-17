@@ -27,6 +27,9 @@ lo strumento a coniarlo via OAuth.
 > sottoscritto: se una chiamata risponde `404` o `401`, confronta con la documentazione del
 > **tuo** account e correggi lì, senza toccare i sorgenti.
 
+> Se parti da zero, segui **[`GUIDA.md`](GUIDA.md)**: la stessa procedura, passo per passo,
+> con i controlli da fare e cosa guardare a ogni schermata.
+
 ## 2. Installazione
 
 ```bash
@@ -198,6 +201,7 @@ voce giusta e rilancia `scarica` (il bilancio è già in locale, non si ripaga).
 | `indicatori.py` | voci normalizzate e indici di bilancio |
 | `benchmark.py` | quartili, percentili, lettura del posizionamento, export CSV |
 | `report.py` | report HTML autonomo |
+| `GUIDA.md` | procedura passo passo, dal computer vuoto al report |
 | `demo.py` | esempio completo con dati sintetici, senza rete |
 | `test_bilanci.py` | test offline (`python3 test_bilanci.py`), nessun credito consumato |
 
