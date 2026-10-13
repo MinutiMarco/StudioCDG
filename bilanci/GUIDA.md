@@ -206,3 +206,44 @@ python3 cli.py peer      03242670168 --ambito nord --cifre-ateco 6 --banda 3 --l
 python3 cli.py scarica   --anno 2024 --max-crediti 35 --conferma
 python3 cli.py benchmark --anno 2024
 ```
+
+---
+
+## Riepilogo per Windows (PowerShell)
+
+Apri **Start → PowerShell → Windows PowerShell** e incolla una riga alla volta, Invio dopo
+ciascuna. Su Windows il comando di Python è `python`, non `python3`.
+
+```powershell
+cd ~\Documents
+git clone https://github.com/MinutiMarco/StudioCDG.git
+cd StudioCDG
+git checkout claude/openapi-bilanci-benchmark-amad3f
+cd bilanci
+
+python --version                     # deve dire 3.11 o superiore
+pip install -r requirements.txt
+python demo.py                       # prova a vuoto, nessun credito
+
+$env:OPENAPI_TOKEN = "incolla-qui-il-token"     # da rifare a ogni finestra nuova
+
+python cli.py scheda    03242670168
+python cli.py stima     03242670168 --ambito nord --cifre-ateco 6
+python cli.py peer      03242670168 --ambito nord --cifre-ateco 6 --banda 3 --limite 30 --conferma
+python cli.py scarica   --anno 2024 --max-crediti 35 --conferma
+python cli.py benchmark --anno 2024
+```
+
+Per aprire il report finito senza cercarlo in Esplora file:
+
+```powershell
+start output\benchmark_2024.html
+```
+
+Se `git` non è installato, PowerShell risponde *«git : Termine 'git' non riconosciuto…»*:
+installalo da [git-scm.com/download/win](https://git-scm.com/download/win) (va bene tutto
+predefinito, poi **chiudi e riapri PowerShell**), oppure scarica lo ZIP del branch da GitHub.
+
+Se digitando `python` si apre il Microsoft Store, Python non c'è: installalo da
+[python.org/downloads](https://www.python.org/downloads/) ricordandoti di spuntare
+**«Add python.exe to PATH»** nella prima schermata.
