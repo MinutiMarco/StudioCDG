@@ -49,7 +49,10 @@ Genera `esempio/benchmark_demo.html` con dati inventati. Aprilo con doppio clic:
 esattamente la forma che avrà il report vero. Se questo funziona, il resto è solo questione
 di credenziali.
 
-Facoltativo, per sicurezza: `python3 test_bilanci.py` → deve finire con `OK`.
+Facoltativo, per sicurezza: `python3 test_bilanci.py` e `python3 test_pipeline.py` → entrambi
+devono finire con `OK`. Il secondo simula le API e percorre tutta la sequenza
+(ricerca, bilanci, indici, report) senza rete e senza crediti: se arriva in fondo, dal vivo
+non si interrompe a metà.
 
 ## Passo 4 — Attiva i servizi e prendi il token su Openapi
 
@@ -194,6 +197,7 @@ PFN/EBITDA e ricavi per dipendente**.
 | «Nessuna impresa trovata» sulla `scheda` | Partita IVA errata, oppure la società è cessata: prova `--base`. |
 | Il report ha molte celle `—` | I nomi dei campi nel tuo payload sono diversi da quelli previsti. Lancia `python3 cli.py ispeziona dati/bilanci/riclassificato/<file>.json --filtro patrimonio`, leggi il nome vero e aggiungilo in `mappa_campi.json`. Poi rilancia `scarica`: i bilanci sono già in locale, non si ripagano. |
 | `command not found: python3` | Su Windows il comando è `python`. |
+| `pip` non trovato, o installa ma poi `ModuleNotFoundError: requests` | `pip` punta a un'altra installazione di Python. Usa `python -m pip install -r requirements.txt`: così installa nello stesso Python che esegue i comandi. |
 | Ho speso più del previsto | Metti sempre `--max-crediti`. I conteggi (`stima`) sono gratuiti, i bilanci no: il costo è quasi tutto lì, un bilancio per concorrente. |
 
 ## Riepilogo dei comandi

@@ -203,7 +203,8 @@ voce giusta e rilancia `scarica` (il bilancio è già in locale, non si ripaga).
 | `report.py` | report HTML autonomo |
 | `GUIDA.md` | procedura passo passo, dal computer vuoto al report |
 | `demo.py` | esempio completo con dati sintetici, senza rete |
-| `test_bilanci.py` | test offline (`python3 test_bilanci.py`), nessun credito consumato |
+| `test_bilanci.py` | test offline dei singoli moduli (`python3 test_bilanci.py`) |
+| `test_pipeline.py` | prova completa della sequenza `tutto` con API simulate, offline |
 
 ## 10. Prima di consegnare l'analisi
 
